@@ -295,4 +295,342 @@ Subject code - 18ISL38 - BE ISE Branch VTU
 
 ---
 
+## PART B
+
+***Q 1. Write a C/C++ program to implement the cat command using general files API’s***
+
+→ [0777 meaning](https://unix.stackexchange.com/questions/103413/is-there-any-difference-between-mode-value-0777-and-777/103414) 
+
+File descriptor - a file descriptor is an abstract indicator used to access a file or other input/output resource, such as a pipe or network socket
+
+- 
+
+    ```c
+    // Write a C/C++ program to implement the cat command using general files API’s
+
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <stdio.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+
+    void main(int argc, char *argv[])
+    {
+    	int fileDiscripter;
+        // charecters extracted will be stored in the string temp
+    	char temp[2];
+
+    	// by entering 0777 we provide wrx permission to all 0777 (octal)    == binary 0b 111 111 111    == permissions rwxrwxrwx   (== decimal 511)
+    	fileDiscripter = open(argv[1], O_RDONLY, 0777);
+    	
+    	//Check if file discrptor is open properly
+    	if (fileDiscripter == -1)
+    	{
+    		printf("\nERROR opening the file");
+    	}
+    	else
+    	{
+            // read function reads charecter by chareteor and stores it in buffer
+    		while (read(fileDiscripter, temp, 1) > 0)
+    		{
+    			printf("%c", temp[0]);
+    		}
+    		close (fileDiscripter);
+    	}
+    }
+    ```
+
+***Q 2. Write a C/C++ program to implement the cp (copy) command using general file API’s***
+
+- 
+
+    ```c
+    // Write a C/C++ program to implement the cp (copy) command using general file API’s
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <fcntl.h>
+    #include <errno.h>
+    #include <unistd.h>
+
+    #define BUFFER_SIZE 1024
+
+    int main (int argc, char *argv[])
+    {
+    	// sorce and destination file discriptors
+    	int sourceFileDisc, destFileDisc;
+
+    	int tempRead;
+
+    	char *buffer[BUFFER_SIZE];
+
+    	// Checking if the number of argumets given is right
+    	if (argc != 3)
+    	{
+    		printf("\n\nERROR improper number of arguments\n");
+    		exit(1);
+    	}
+
+    	// If all the arguments are right, we open the source file
+    	sourceFileDisc = open(argv[1], O_RDONLY);
+
+    	// Checking if the file is open properly
+    	if (sourceFileDisc == -1)
+    	{
+    		printf("\n\nERROR opening sorce file [erro number - %d]\n", errno);
+    		exit(1);
+    	}
+
+    	// If source file is open, opening destination file with proper modes and permisions for user group and others
+    	destFileDisc = open ( argv[2], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH );
+
+    	// cheking of the destination file is open properly
+    	if (destFileDisc == -1)
+    	{
+    		printf("\n\nERROR opening the destination file [error number - %d]\n", errno);
+    		exit(1);
+    	}
+
+    	// Now that both source and destination file are open, starting to copy data till EOF, tempRead > 0 is to check of the charecter is sucessfully retrived
+    	while ((tempRead = read(sourceFileDisc, buffer, BUFFER_SIZE)) > 0)
+    	{
+    		if( write(destFileDisc, buffer, tempRead) != tempRead )
+    		{
+    			printf("\nERROR in writing data to destination file [%s]\n", argv[2]);
+    		}
+    	}
+
+    	// Closing both source and destination files
+    	if (close(sourceFileDisc) == -1)
+    		printf("\n\nERROR unable to close source file");
+    	if (close(destFileDisc) == -1)
+    		printf("\n\nERROR unable to close destination file");
+
+    	exit(0);
+    }
+    ```
+
+***Q 3. Write a C/C++ program to implement the ln/rename command using general file API’s***
+
+- 
+
+    ```c
+    // Write a C/C++ program to implement the ln/rename command using general file API’s
+
+    #include <stdio.h>
+    #include <unistd.h>
+    #include <stdlib.h>
+
+    void main (int argc, char *argv[])
+    {
+    	// Checking if valid number of arguments are given
+    	if (argc != 3)
+    	{
+    		printf("\n\nERROR invalid number of arguments given\n");
+    		exit(1);
+    	}
+
+    	// Linking the two files to same inode number, that way the file name changes. The function "link" returns -1 if it faile
+    	if (link(argv[1], argv[2]) == -1)
+    	{
+    		printf("\n\nERROR unable to like files\n");
+    		exit (1);
+    	}
+    	else
+    	{
+    		printf("\nFile are succesfully linked\n");
+    		printf("Displaying inode number of both files after updating :-\n");
+
+    		// Storing the files and inode number into "str"
+    		char str[100];
+    		sprintf (str, "ls -i %s %s \n\n", argv[1], argv[2]);
+
+    		// Printing the list of files stored in the string
+    		system(str);
+    		exit(0);
+    	}
+    }
+    ```
+
+***Q 4.Write a C/C++ program to duplicate the file descriptor of a file Foo to standard input file
+descriptor***
+
+- 
+
+    ```c
+    // Write a C/C++ program to duplicate the file descriptor of a file Foo to standard input file descriptor 
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <unistd.h>
+
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <fcntl.h>
+
+    void main(int argc, char *argv[])
+    {
+    	int fileDisc, newFileDisc;
+
+    	// Checking if the proper number of argumenst are given
+    	if (argc != 2)
+    	{
+    		printf("\n\nERROR the number of arguments given is incorrect\n");
+    		exit(1);
+    	}
+
+    	// Opening the file and getting the file discriptor
+    	if ((fileDisc = open(argv[1], O_WRONLY)) == -1)
+    	{
+    		printf("\n\nERROR opening the given file\n");
+    		exit(1);
+    	}
+
+    	// After succesful opeing of file, duplicating the file discriptor and saving to new file discriptor
+    	if((newFileDisc = fcntl(fileDisc, F_DUPFD, 0) == -1))
+    	{
+    		printf("\n\nERROR duplucating the file discriptor\n");
+    		exit(1);
+    	}
+    	else 
+    	{
+    		printf("Succesfully duplucated the file discripter of file [%s]\n", argv[1]);
+    		printf("Old file discrptor was = %d\nNew file discptor is = %d\n\n", fileDisc, newFileDisc);
+    		exit(0);
+    	}	
+    }
+    ```
+
+***Q 5.Write a C/C++ program to query and display the different attributes associated with a file***
+
+- → Anagram to remember all file attributes **" crp dbl " -** CPR decibel
+
+    ```c
+    // Write a C/C++ program to query and display the different attributes associated with a file
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <unistd.h>
+
+    #include <sys/stat.h>
+    #include <sys/types.h>
+
+    void main(int argc, char *argv[])
+    {
+    	struct stat buf;
+
+    	// Checking if valid number of arguments are given
+    	if (argc != 2)
+    	{
+    		printf("\n\nERROR invalid number of arguments\n");
+    		exit(1);
+    	}
+
+    	// Obtaining stat of given file, and printing error if not obtained
+    	if (stat(argv[0], &buf) == -1)
+    	{
+    		printf("\n\nERROR unable to obtain stat of the file\n");
+    		exit(1);
+    	}
+
+    	// Displaying the file type
+    	printf("\nDisplaying the type and attributes of given file :-\n");
+    	switch (buf.st_mode & S_IFMT)
+    	{
+    		case S_IFBLK :
+    			printf("block device file\n");
+    			break;
+    		case S_IFCHR :
+    			printf("charecter device file\n");
+    			break;
+    		case S_IFDIR :
+    			printf("directory");
+    			break;
+    		case S_IFIFO :
+    			printf("FIFI/pipe\n");
+    			break;
+    		case S_IFLNK :
+    			printf("symlink\n");
+    			break;
+    		case S_IFREG :
+    			printf("regular file\n");
+    			break;
+    		case S_IFSOCK :
+    			printf("socket\n");
+    			break;
+    		default :
+    			printf("file type not known\n");
+    			break;
+    	}
+
+    	printf("\nI-node number : %lld", (long long) buf.st_ino);
+    	printf("\nBlocks allocated : %lld\n\n", (long long) buf.st_blocks);
+    	printf("\nMode : %lo (octal)", (long) buf.st_mode);
+
+    	exit(0);
+    }
+    ```
+
+***Q 7.Write C/C++ program to read and display the last 10 character’s of the input file***
+
+- 
+
+    ```c
+    // Write C/C++ program to read and display the last 10 character’s of the input file
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <unistd.h>
+
+    void main(int argc, char *argv[])
+    {
+    	FILE *filePtr;
+    	char ch;
+    	int num, strLength;
+
+    	// Checking if the arguments are correct
+    	if (argc != 2)
+    	{
+    		printf("\n\nERROR invalid number of arguments\n");
+    		exit(1);
+    	}
+
+    	// Accepting the num value to print last num charecters
+    	printf("Enter the value of last n charecters to print : ");
+    	scanf("%d", &num);
+
+    	// Opeing the file to read from
+    	filePtr = fopen(argv[1], "r");
+    	if (filePtr == NULL)
+    	{
+    		printf("\n\nERROR cannot open the given file\n");
+    		exit(1);
+    	}
+    	else 
+    	{
+    		// Placing the pointer at the end of file
+    		fseek(filePtr, -1, SEEK_END);
+
+    		// The length of the fill will be equal to the position of the last charecter
+    		strLength = ftell(filePtr);
+
+    		//Placing the cursor at num position from the end
+    		fseek(filePtr, (strLength - num), SEEK_SET);
+
+    		// Displaying all the charecters form len - num position
+    		do
+    		{
+    			ch = fgetc(filePtr);
+    			printf("%c", ch);
+    		}while (ch != EOF);
+
+    	}
+
+    	fclose(filePtr);
+    	exit(0);
+    }
+    ```
+
+---
+
 **Thank you for looking into my repository, Glad [I](https://twitter.com/raghunathan__r) could be of some help 😊**
